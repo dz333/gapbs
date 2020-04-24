@@ -5,7 +5,7 @@
 #define PVECTOR_H_
 
 #include <algorithm>
-//#include "path to arrays.h"
+#include "/home/drew/volume/non-contiguous-memory/programs/stackLib/array/arrays.h"
 /*
 GAP Benchmark Suite
 Class:  pvector
