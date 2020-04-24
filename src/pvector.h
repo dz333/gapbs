@@ -5,8 +5,7 @@
 #define PVECTOR_H_
 
 #include <algorithm>
-
-
+//#include "path to arrays.h"
 /*
 GAP Benchmark Suite
 Class:  pvector
@@ -22,14 +21,14 @@ Vector class with ability to not initialize or do initialize in parallel
 template <typename T_>
 class pvector {
  public:
-  typedef T_* iterator;
+  typedef ArrayIter<T_> iterator;
 
-  pvector() : start_(nullptr), end_size_(nullptr), end_capacity_(nullptr) {}
-
+ pvector() : arr_(nullptr), elements_(0), capacity_(0) {}
+  
   explicit pvector(size_t num_elements) {
-    start_ = new T_[num_elements];
-    end_size_ = start_ + num_elements;
-    end_capacity_ = end_size_;
+    arr_ = new Array<T_>(num_elements);
+    elements_ = num_elements;
+    capacity_ = num_elements;
   }
 
   pvector(size_t num_elements, T_ init_val) : pvector(num_elements) {
@@ -40,7 +39,7 @@ class pvector {
       : pvector(copy_end - copy_begin) {
     #pragma omp parallel for
     for (size_t i=0; i < capacity(); i++)
-      start_[i] = copy_begin[i];
+      arr_[i] = copy_begin[i];
   }
 
   // don't want this to be copied, too much data to move
@@ -48,62 +47,60 @@ class pvector {
 
   // prefer move because too much data to copy
   pvector(pvector &&other)
-      : start_(other.start_), end_size_(other.end_size_),
-        end_capacity_(other.end_capacity_) {
-    other.start_ = nullptr;
-    other.end_size_ = nullptr;
-    other.end_capacity_ = nullptr;
+    : arr_(other.arr_), elements_(other.elements_), capacity_(other.capacity_) {
+    other.arr_ = nullptr;
+    other.elements_ = 0;
+    other.capacity_ = 0;
   }
 
   // want move assignment
   pvector& operator= (pvector &&other) {
-    start_ = other.start_;
-    end_size_ = other.end_size_;
-    end_capacity_ = other.end_capacity_;
-    other.start_ = nullptr;
-    other.end_size_ = nullptr;
-    other.end_capacity_ = nullptr;
+    arr_ = other.arr_;
+    elements_ = other.elements_;
+    capacity_ = other.capacity_;
+    other.arr_ = nullptr;
+    other.elements_ = 0;
+    other.capacity_ = 0;
     return *this;
   }
 
   ~pvector() {
-    if (start_ != nullptr)
-      delete[] start_;
+    if (arr_ != nullptr)
+      delete arr_;
   }
 
   // not thread-safe
   void reserve(size_t num_elements) {
     if (num_elements > capacity()) {
-      T_ *new_range = new T_[num_elements];
+      Array<T_>* new_range = new Array<T_>(num_elements);
       #pragma omp parallel for
       for (size_t i=0; i < size(); i++)
-        new_range[i] = start_[i];
-      end_size_ = new_range + size();
-      delete[] start_;
-      start_ = new_range;
-      end_capacity_ = start_ + num_elements;
+        new_range[i] = arr_[i];
+      delete arr_;
+      arr_ = new_range;
+      // elements_ does not change, just adding space
+      capacity_ = num_elements;
     }
   }
 
   bool empty() {
-    return end_size_ == start_;
+    return elements_ = 0;
   }
 
   void clear() {
-    end_size_ = start_;
+    elements_ = 0;
   }
 
   void resize(size_t num_elements) {
     reserve(num_elements);
-    end_size_ = start_ + num_elements;
   }
 
   T_& operator[](size_t n) {
-    return start_[n];
+    return (*arr_)[n];
   }
 
   const T_& operator[](size_t n) const {
-    return start_[n];
+    return (*arr_)[n];
   }
 
   void push_back(T_ val) {
@@ -111,47 +108,50 @@ class pvector {
       size_t new_size = capacity() == 0 ? 1 : capacity() * growth_factor;
       reserve(new_size);
     }
-    *end_size_ = val;
-    end_size_++;
+    (*arr_)[elements_] = val;
+    elements_++;
   }
 
   void fill(T_ init_val) {
     #pragma omp parallel for
-    for (T_* ptr=start_; ptr < end_size_; ptr++)
-      *ptr = init_val;
+    for (size_t i=0; i < elements_; i++)
+      (*arr_)[i] = init_val;
   }
 
   size_t capacity() const {
-    return end_capacity_ - start_;
+    return capacity_;
   }
 
   size_t size() const {
-    return end_size_ - start_;
+    return elements_;
   }
 
   iterator begin() const {
-    return start_;
+    return iterator(arr_);
   }
 
   iterator end() const {
-    return end_size_;
+    iterator tmp = iterator(arr_);
+    tmp += elements_;
+    return tmp;
   }
 
+  //TODO eliminate
   T_* data() const {
-    return start_;
+    return &((*arr_)[0]);
   }
 
   void swap(pvector &other) {
-    std::swap(start_, other.start_);
-    std::swap(end_size_, other.end_size_);
-    std::swap(end_capacity_, other.end_capacity_);
+    std::swap(arr_, other.arr_);
+    std::swap(elements_, other.elements_);
+    std::swap(capacity_, other.capacity_);
   }
 
 
  private:
-  T_* start_;
-  T_* end_size_;
-  T_* end_capacity_;
+  Array<T_>* arr_;
+  size_t elements_;
+  size_t capacity_;
   static const size_t growth_factor = 2;
 };
 
