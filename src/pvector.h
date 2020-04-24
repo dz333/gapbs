@@ -138,6 +138,7 @@ class pvector {
 
   //TODO eliminate
   T_* data() const {
+    exit(1);
     return &((*arr_)[0]);
   }
 

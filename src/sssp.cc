@@ -118,7 +118,7 @@ pvector<WeightT> DeltaStep(const WGraph &g, NodeID source, WeightT delta) {
         size_t copy_start = fetch_and_add(next_frontier_tail,
                                           local_bins[next_bin_index].size());
         copy(local_bins[next_bin_index].begin(),
-             local_bins[next_bin_index].end(), frontier.data() + copy_start);
+             local_bins[next_bin_index].end(), frontier.begin() + copy_start);
         local_bins[next_bin_index].resize(0);
       }
       iter++;
